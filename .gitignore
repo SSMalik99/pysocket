@@ -1,2 +1,4 @@
 client/client2.py
+client/start.py
+client/android.py
 server/sever2.py
