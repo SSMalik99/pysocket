@@ -6,12 +6,13 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.textinput import TextInput
+from kivy.uix.screenmanager import ScreenManager, Screen
 
-currentScreen = "main_screen"
 class MainScreen(GridLayout):
     def __init__(self, **kwargs):
         super(MainScreen, self).__init__(**kwargs)
         self.cols = 1
+        self.name = "main_screen"
         # self.size_hint = [.5, .5]
         # self.pos_hint = {"top" : .5, "right": .5}
         self.padding = 50
@@ -25,7 +26,7 @@ class MainScreen(GridLayout):
         self.add_widget(registrationBtn)
     def login_callback(self, instance):
         currentScreen = "login_screen"
-        print("login", instance)
+        
     def registration_callback(self, instance):
         print("registration", instance)
 
@@ -43,6 +44,7 @@ class LoginScreen(GridLayout):
 
     def __init__(self, **kwargs):
         super(LoginScreen, self).__init__(**kwargs)
+        self.name = "login_screen"
         self.cols = 2
         self.add_widget(Label(text='User Name'))
         self.username = TextInput(multiline=False)
@@ -54,22 +56,32 @@ class LoginScreen(GridLayout):
         self.add_widget(submit_button)
 
 
+
+sm = ScreenManager()
+
+SCREENS = {
+    "main_screen":MainScreen,
+    "login_screen" : LoginScreen,
+    "registration_screen" : RegisterScreen,
+    "group_chat_screen" : GroupChatScreen,
+    'user_screen' : UsersScreen,
+    'chat_screen' : ChatScreen,
+    'user_screen' : UsersScreen
+}
+
+for key in SCREENS:
+    screen = Screen(name=key)
+    sm.add_widget(screen)
+
 class MyApp(App):
-    
-    SCREENS = {
-        "main_screen":MainScreen,
-        "login_screen" : LoginScreen,
-        "registration_screen" : RegisterScreen,
-        "group_chat_screen" : GroupChatScreen,
-        'user_screen' : UsersScreen,
-        'chat_screen' : ChatScreen,
-        'user_screen' : UsersScreen
-    }
     def changeScreen(screenName):
         currentScreen = MyApp.SCREENS[screenName]()
-        return currentScreen
+        
     def build(self):
-        return MyApp.changeScreen(currentScreen)
+
+        sm = ScreenManager()
+        sm.current = "main_screen"
+        return sm
         # return LoginScreen()
 
 
