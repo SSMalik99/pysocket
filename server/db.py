@@ -1,8 +1,9 @@
 import string
-import mysql.connector
+# import mysql.connector
+import pymysql
 
 
-USER_TABLE_FILLABLE = ["first_name", "last_name", "user_name", "email", "password", "created_at", "updated_at"]
+USER_TABLE_FILLABLE = ["first_name", "last_name", "user_name", "email", "password", "is_logged_in", "created_at", "updated_at"]
 MESSAGE_TABLE_FILLABLE = ["message", "is_seen", "sender_id", "reciever_id", 'group_id',"is_group_message", "created_at", "updated_at"]
 CHAT_GROUP_TABLE_FILLABLE = ['name', 'admin_id', 'is_private', "created_at", "updated_at"]
 USER_GROUP_TABLE_FILLABLE = ['user_id', "group_id", "created_at", "updated_at"]
@@ -17,17 +18,19 @@ class Database:
 
     def connectDb(self):
         if self.db_name == False:
-            self.database = mysql.connector.connect(
-                host = self.host,
-                user = self.db_user,
-                passwd = self.db_pass
-            )
-        else:
-            self.database = mysql.connector.connect(
+            self.database = pymysql.connect(
                 host = self.host,
                 user = self.db_user,
                 passwd = self.db_pass,
-                database= self.db_name
+                cursorclass=pymysql.cursors.DictCursor
+            )
+        else:
+            self.database = pymysql.connect(
+                host = self.host,
+                user = self.db_user,
+                passwd = self.db_pass,
+                database= self.db_name,
+                cursorclass=pymysql.cursors.DictCursor
             )
 
         self.cursor = self.database.cursor()
@@ -38,6 +41,12 @@ class Database:
     def executeQuery(self):
         self.cursor.execute(self.query)
 
+    def __fetchAllFromCursor(self):
+        return self.cursor.fetchall()
+
+    def __fetchOneFromCursor(self):
+        return self.cursor.fetchone()
+        # return self.cursor.fetchoneDict()
     def createDatabase(self, db_name):
         self.query = f"""CREATE DATABASE IF NOT EXISTS {db_name}"""
         self.db_name = db_name
@@ -54,13 +63,12 @@ class Database:
         totalLength = coulmns.__len__()
         index = 1
         for i in coulmns:
-            self.query += i
+            self.query += i.column
             if(index < totalLength):
                 self.query += ", "
             index+=1
 
         self.query +=" );"
-        print(self.query)
         self.executeQuery()
 
     def inisertData(self, table, data):
@@ -71,104 +79,201 @@ class Database:
             length = 1
             threadLength = USER_TABLE_FILLABLE.__len__()
             for column in USER_TABLE_FILLABLE:
-                if(data.column):
+                if(data[column]):
                     self.query += column
                 
                 if(length < threadLength):
                     self.query += " , "
+                
+                length+=1
             
             self.query += ") VALUES ("
             
+            length = 1
             for column in USER_TABLE_FILLABLE:
-                if(data.column):
-                    self.query += data.column
+                if(data[column]):
+                    self.query += f"""'{data[column]}'"""
                 
                 if(length < threadLength):
                     self.query += " , "
+                length+=1
             
             self.query += ") ;"        
         elif(table == "messages"):
             length = 1
             threadLength = MESSAGE_TABLE_FILLABLE.__len__()
             for column in MESSAGE_TABLE_FILLABLE:
-                if(data.column):
+                if(data[column]):
                     self.query += column
                 
                 if(length < threadLength):
                     self.query += " , "
-            
+                length+=1
+
             self.query += ") VALUES ("
             
+            length = 1
             for column in MESSAGE_TABLE_FILLABLE:
-                if(data.column):
-                    self.query += data.column
+                if(data[column]):
+                    self.query += f"""'{data[column]}'"""
                 
                 if(length < threadLength):
                     self.query += " , "
-            
+                
+                length+=1
             self.query += ") ;"
         elif(table == "chat_groups"):
             length = 1
             threadLength = CHAT_GROUP_TABLE_FILLABLE.__len__()
             for column in CHAT_GROUP_TABLE_FILLABLE:
-                if(data.column):
+                if(data[column]):
                     self.query += column
-                
+
                 if(length < threadLength):
                     self.query += " , "
-            
+                length+=1
+
             self.query += ") VALUES ("
             
             for column in CHAT_GROUP_TABLE_FILLABLE:
-                if(data.column):
-                    self.query += data.column
+                if(data[column]):
+                    self.query += f"""'{data[column]}'"""
                 
                 if(length < threadLength):
                     self.query += " , "
+                length+=1
             
             self.query += ") ;"
         elif(table == "user_groups"):
             length = 1
             threadLength = USER_GROUP_TABLE_FILLABLE.__len__()
             for column in USER_GROUP_TABLE_FILLABLE:
-                if(data.column):
+                if(data[column]):
                     self.query += column
                 
                 if(length < threadLength):
                     self.query += " , "
+                
+                length+=1
             
             self.query += ") VALUES ("
             
             for column in USER_GROUP_TABLE_FILLABLE:
-                if(data.column):
-                    self.query += data.column
+                if(data[column]):
+                    self.query += f"""'{data[column]}'"""
                 
                 if(length < threadLength):
                     self.query += " , "
+                
+                length+=1
             
             self.query += ") ;"
         elif(table == "socket_sessions"):
             length = 1
             threadLength = SOCKET_SESSION_TABLE_FILLABLE.__len__()
             for column in SOCKET_SESSION_TABLE_FILLABLE:
-                if(data.column):
+                if(data[column]):
                     self.query += column
                 
                 if(length < threadLength):
                     self.query += " , "
-            
+                
+                length+=1
             self.query += ") VALUES ("
             
             for column in SOCKET_SESSION_TABLE_FILLABLE:
-                if(data.column):
-                    self.query += data.column
+                if(data[column]):
+                    self.query += f"""'{data[column]}'"""
                 
                 if(length < threadLength):
                     self.query += " , "
+
+                length+=1
             
             self.query += ") ;"
-            
+        
+        print(self.query)
         self.executeQuery()
+        self.commitDb()
+    
+    def commitDb(self):
+        self.database.commit()
+
+    def selectAllFromTable(self, tableName):
+        self.query = f"""SELECT * FROM {tableName} ;"""
+        self.executeQuery()
+        data = self.__fetchAllFromCursor()
+        return data
+    
+    def findFrom(self, table_name):
+        self.query = f"""SELECT * FROM {table_name} """
+        return DatabaseActions(table_name=table_name)
+    
+    def findBy(self, table_name, column_name, column_value):
+        self.query = f"""SELECT * FROM {table_name} WHERE {column_name} = '{column_value}'"""
+        self.executeQuery()
+        return self.__fetchOneFromCursor()
+
+    def getFromQuery(self, query, only_one_record = False, return_data = True ):
+        self.query = query
+        if(return_data):
+            self.executeQuery()
+            if(only_one_record):
+                return self.__fetchOneFromCursor()
+            
+            return self.__fetchAllFromCursor()
+    
+    def updateIn(self, table_name) :
+        """Initialize a update table instance to alter a table or opdate some values"""
+        return UpdateTable(table_name=table_name)
+    
+    def executeUpdate(self, query):
+        self.query = query
+        self.executeQuery()
+
+class UpdateTable:
+    def __init__(self, table_name) -> None:
+        self.table = table_name
+        self.alter_query = f"""ALTER TABLE {table_name} """
+        self.update_query = f"""UPDATE {table_name} """
+    
+    def updateColumn(self, column_name, column_value):
+        if "SET" not in self.update_query:
+            self.update_query += f"""SET {column_name} = '{column_value}' """
+        else:
+            self.update_query += f""", {column_name} = '{column_value}' """
+    
+    def updateOn(self, column_name, column_value = False):
+        self.update_query += "WHERE "
+        if(column_value == False):
+            self.update_query += f"""{column_name} = '{column_value}'"""
+        else:
+            self.update_query += f"""{column_name} <> NULL"""
+    
+    def getUpdateQuery(self):
+        return self.update_query
+
+
+class DatabaseActions:
+    def __init__(self, table_name) -> None:
+        self.table_name = table_name
+        self.query = f"""SELECT * FROM {self.table_name} """
+
+    def where(self, column_name, column_value):
+        if "WHERE" not in self.query:
+            self.query += f"""WHERE {column_name} = '{column_value}' """
+        else:
+            self.query += f""" AND {column_name} = '{column_value}' """
+    
+    def orWhere(self, column_name, column_value):
+        if "WHERE" not in self.query:
+            self.query += f"""Where id <> 0 """
+        else:
+            self.query += f""" or {column_name} = '{column_value}' """
+    
+    def getQuery(self):
+        return self.query
+
 class TableColumn:
     def __init__(self, name) -> None:
         self.name = name
@@ -193,7 +298,7 @@ class TableColumn:
         self.column = f"""{self.name} BOOLEAN """
 
     def date_time_column(self):
-        self.column = f"""{self.name} DATETIME"""
+        self.column = f"""{self.name} DATETIME """
 
     # add index methodss
     def uniqueIndex(self):
